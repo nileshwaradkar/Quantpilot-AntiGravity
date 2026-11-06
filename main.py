@@ -6,6 +6,15 @@ import os
 import sys
 import uvicorn
 
+# Satisfy Hugging Face ZeroGPU
+try:
+    import spaces
+    @spaces.GPU
+    def _zero_gpu_stub():
+        return None
+except ImportError:
+    pass
+
 def main():
     port = int(os.environ.get("PORT", 7860))
     host = os.environ.get("HOST", "0.0.0.0")
