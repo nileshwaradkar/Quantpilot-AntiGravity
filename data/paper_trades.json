@@ -1,0 +1,27 @@
+{
+  "balance": 105250.0,
+  "capital": 100000.0,
+  "open_positions": {},
+  "closed_trades": [
+    {
+      "trade_id": "TRADE-1793967576681",
+      "symbol": "NSE:NIFTY50-INDEX",
+      "name": "Nifty 50 Index",
+      "side": "LONG",
+      "position_type": "Index",
+      "entry_time": "2026-11-06 17:49:36",
+      "exit_time": "2026-11-06 17:49:36",
+      "entry_price": 25000.0,
+      "exit_price": 25210.0,
+      "quantity": 25,
+      "capital_used": 31250.0,
+      "stop_loss": 24900.0,
+      "target_price": 25200.0,
+      "pnl": 5250.0,
+      "pnl_pct": 16.8,
+      "exit_reason": "TARGET_HIT",
+      "status": "EXECUTED"
+    }
+  ],
+  "updated_at": "2026-11-06T17:49:36.683061"
+}

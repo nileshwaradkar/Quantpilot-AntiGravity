@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Quant Pilot - Intraday Trading Assistant</title>
+  
+  <!-- Apple Safari Web App Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="QuantPilot">
+  <meta name="theme-color" content="#090d16">
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- TradingView Lightweight Charts -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              dark: '#080d1a',
+              panel: '#0f172a',
+              card: '#1e293b',
+              border: '#334155'
+            },
+            bull: '#26a69a',
+            bear: '#ef5350'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="manifest" href="/static/manifest.json">
+</head>
+<body class="bg-[#090d16] text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-white flex flex-col h-screen overflow-hidden">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 flex items-center justify-between shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <i data-lucide="trending-up" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold tracking-wider text-base bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+            QUANT PILOT
+          </span>
+          <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            INTRADAY
+          </span>
+        </div>
+        <div class="text-[11px] text-slate-400 flex items-center gap-2">
+          <span id="marketClock">--:--:-- IST</span>
+          <span>•</span>
+          <span id="nseStatusBadge" class="text-emerald-400 font-semibold">NSE: OPEN</span>
+          <span>•</span>
+          <span id="mcxStatusBadge" class="text-amber-400 font-semibold">MCX: OPEN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Right Controls -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Mode Badge -->
+      <button id="modeToggleBtn" onclick="toggleTradingMode()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span id="modeLabel" class="text-emerald-400">PAPER TRADING</span>
+      </button>
+
+      <!-- Broker Status Pill -->
+      <div id="brokerStatusPill" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-xs text-slate-300">
+        <span id="brokerDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        <span id="brokerText">Broker Offline</span>
+      </div>
+
+      <!-- Settings Button -->
+      <button onclick="openSettingsModal()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition" title="Strategy & Broker Settings">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Sound Toggle -->
+      <button id="soundToggleBtn" onclick="toggleSound()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-400 transition" title="Toggle Audio Chimes">
+        <i data-lucide="volume-2" id="soundIcon" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MOBILE SYMBOL CAROUSEL (Safari iPhone friendly) ================= -->
+  <div class="md:hidden bg-[#0c1222] border-b border-slate-800/80 px-3 py-2 overflow-x-auto no-scrollbar flex items-center gap-2 shrink-0">
+    {% for item in watchlist %}
+    <button onclick="selectSymbol('{{ item.symbol }}')" id="pill-{{ item.symbol | replace(':', '_') | replace('-', '_') }}" class="mobile-sym-pill whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700/80 bg-slate-800/50 text-slate-300 active:scale-95 transition flex items-center gap-1.5">
+      <span>{{ item.name.split(' ')[0] }}</span>
+      <span class="text-[10px] text-slate-400 sym-price-tag" data-sym="{{ item.symbol }}">--</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- ================= MAIN BODY LAYOUT ================= -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- DESKTOP LEFT SIDEBAR: WATCHLIST & SCANNER MATRIX -->
+    <aside class="hidden md:flex flex-col w-72 lg:w-80 bg-[#0c1322] border-r border-slate-800 shrink-0">
+      <div class="p-3 border-b border-slate-800/80 flex items-center justify-between">
+        <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <i data-lucide="radar" class="w-4 h-4 text-emerald-400"></i>
+          Intraday Scanner
+        </div>
+        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400" id="scannerCount">8 Symbols</span>
+      </div>
+
+      <!-- Watchlist Items -->
+      <div class="flex-1 overflow-y-auto p-2 space-y-1.5" id="desktopWatchlist">
+        {% for item in watchlist %}
+        <div onclick="selectSymbol('{{ item.symbol }}')" id="card-{{ item.symbol | replace(':', '_') | replace('-', '_') }}" class="sym-card cursor-pointer p-3 rounded-xl border border-slate-800 bg-[#0f172a]/60 hover:bg-slate-800/80 hover:border-slate-700 transition">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-xs text-white tracking-wide">{{ item.name }}</span>
+            <span class="verdict-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">SCANNING</span>
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span class="font-mono text-white sym-price" data-sym="{{ item.symbol }}">₹--</span>
+            <span class="text-[11px] score-badge font-mono text-emerald-400">0/5 Rules</span>
+          </div>
+          <div class="grid grid-cols-2 gap-1 text-[10px] text-slate-400 bg-slate-900/60 p-1.5 rounded-lg border border-slate-800/60">
+            <div>PDH: <span class="pdh-val text-slate-300 font-mono">--</span></div>
+            <div>PDL: <span class="pdl-val text-slate-300 font-mono">--</span></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <!-- CENTER AREA: CHART & ACTIVE STRATEGY VIEW -->
+    <main class="flex-1 flex flex-col min-w-0 bg-[#090d16] overflow-y-auto md:overflow-hidden pb-16 md:pb-0">
+      
+      <!-- Top Chart Bar -->
+      <div class="bg-[#0f172a]/70 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-3">
+          <div>
+            <h2 id="activeSymbolName" class="font-bold text-sm sm:text-base text-white tracking-wide">Nifty 50 Index</h2>
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span id="activeSymbolCode" class="font-mono text-slate-300">NSE:NIFTY50-INDEX</span>
+              <span>•</span>
+              <span class="text-emerald-400 font-bold font-mono text-sm" id="activeCurrentPrice">₹--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Strategy Verdict Banner -->
+        <div id="activeVerdictBanner" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 flex items-center gap-2 text-xs font-semibold">
+          <span id="activeVerdictDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
+          <span id="activeVerdictText" class="text-slate-300">WAITING FOR BREAKOUT</span>
+        </div>
+
+        <!-- Timeframe & Quick Actions -->
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold">5M CANDLES</span>
+          <button onclick="reloadActiveCandles()" class="p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300" title="Refresh Chart">
+            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content Split: Chart on Left, Strategy Card on Right -->
+      <div class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto">
+        
+        <!-- CHART CONTAINER -->
+        <div class="flex-1 flex flex-col p-3 min-h-[380px] lg:min-h-0 border-b lg:border-b-0 lg:border-r border-slate-800">
+          <!-- TradingView Lightweight Chart Container -->
+          <div id="chartContainer" class="flex-1 w-full rounded-xl overflow-hidden bg-[#0c1222] border border-slate-800 shadow-inner relative">
+            <div id="chartLoadingOverlay" class="absolute inset-0 bg-[#0c1222]/80 backdrop-blur-sm flex items-center justify-center z-10">
+              <div class="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                Rendering 5m Candlestick Chart...
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart Sub-indicator Legend -->
+          <div class="mt-2 flex flex-wrap items-center justify-between text-[11px] text-slate-400 px-1 gap-2">
+            <div class="flex items-center gap-3">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> MA(20) Line</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> RSI(14)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span> RSI(20)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> MACD Hist</span>
+            </div>
+            <div class="font-mono text-slate-400">
+              PDH: <span id="chartPdh" class="text-white font-bold">--</span> | PDL: <span id="chartPdl" class="text-white font-bold">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL: 6 STRATEGY RULES BREAKDOWN & TRADING ACTION -->
+        <div class="w-full lg:w-96 bg-[#0c1322] flex flex-col p-3 overflow-y-auto space-y-3 shrink-0">
+          
+          <!-- RULES CARD -->
+          <div class="bg-[#0f172a] rounded-xl border border-slate-800 p-3.5 shadow-md">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-white">Intraday 6-Rules Matrix</h3>
+              </div>
+              <span id="rulesScoreBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">0/5 Passed</span>
+            </div>
+
+            <!-- Rule 5 & Precondition: PDH / PDL Breakout -->
+            <div class="rule-box p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 mb-2">
+              <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span id="icon-pdh" class="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">⏳</span>
+                  PDH / PDL Breakout
+                </span>
+                <span id="badge-pdh" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Checking</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="detail-pdh">Waiting for price to break previous day's high or low</div>
+            </div>
+
+            <!-- Rule 1: Green candle on MA(20) line -->
+            <div class="rule-box p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 mb-2">
+              <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span id="icon-r1" class="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">1</span>
+                  Rule 1: Candle Closes on MA(20)
+                </span>
+                <span id="badge-r1" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Pending</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="detail-r1">Most of candle body above MA(20) + Bullish pattern</div>
+            </div>
+
+            <!-- Rule 2: RSI(14) Crossover RSI(20) -->
+            <div class="rule-box p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 mb-2">
+              <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span id="icon-r2" class="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">2</span>
+                  Rule 2: RSI(14) Crosses RSI(20)
+                </span>
+                <span id="badge-r2" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Pending</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="detail-r2">RSI(14) crossing RSI(20) from downward to upward</div>
+            </div>
+
+            <!-- Rule 3: MACD Green -->
+            <div class="rule-box p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 mb-2">
+              <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span id="icon-r3" class="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">3</span>
+                  Rule 3: MACD Histogram Green
+                </span>
+                <span id="badge-r3" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Pending</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="detail-r3">Histogram > 0 and expanding</div>
+            </div>
+
+            <!-- Rule 4: Volume > 5-bar SMA -->
+            <div class="rule-box p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 mb-2">
+              <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span id="icon-r4" class="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">4</span>
+                  Rule 4: Volume > 5-period Avg
+                </span>
+                <span id="badge-r4" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Pending</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="detail-r4">Current volume > 5-period moving average</div>
+            </div>
+
+            <!-- Rule 6: Stop-Loss & Target Plan -->
+            <div class="rule-box p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
+              <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span id="icon-r6" class="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">6</span>
+                  Rule 6: Stop-Loss & 1:2 Target Plan
+                </span>
+                <span id="badge-r6" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">Ready</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="detail-r6">SL at previous 2 candles low / Swing low</div>
+            </div>
+          </div>
+
+          <!-- TRADE PLAN CARD (Entry, SL, Target & 1-Click Order) -->
+          <div class="bg-[#0f172a] rounded-xl border border-slate-800 p-3.5 shadow-md">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+              <span>Trade Execution Plan</span>
+              <span id="tradePlanRiskReward" class="text-emerald-400 font-mono">RR 1:2</span>
+            </h4>
+
+            <div class="grid grid-cols-3 gap-2 text-center mb-3">
+              <div class="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                <div class="text-[10px] uppercase text-slate-400 font-medium">Entry Price</div>
+                <div id="planEntryPrice" class="text-xs sm:text-sm font-bold font-mono text-white mt-0.5">₹--</div>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-900 border border-red-500/20">
+                <div class="text-[10px] uppercase text-red-400 font-medium">Stop Loss</div>
+                <div id="planStopLoss" class="text-xs sm:text-sm font-bold font-mono text-red-400 mt-0.5">₹--</div>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-900 border border-emerald-500/20">
+                <div class="text-[10px] uppercase text-emerald-400 font-medium">Target (1:2)</div>
+                <div id="planTarget" class="text-xs sm:text-sm font-bold font-mono text-emerald-400 mt-0.5">₹--</div>
+              </div>
+            </div>
+
+            <!-- Manual Order Action Buttons -->
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="placeManualTrade('LONG')" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 active:scale-95 transition">
+                <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                BUY (LONG)
+              </button>
+              <button onclick="placeManualTrade('SHORT')" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/20 active:scale-95 transition">
+                <i data-lucide="arrow-down-right" class="w-4 h-4"></i>
+                SELL (SHORT)
+              </button>
+            </div>
+          </div>
+
+          <!-- POSITIONS & PORTFOLIO TERMINAL -->
+          <div class="bg-[#0f172a] rounded-xl border border-slate-800 p-3.5 shadow-md">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
+                Paper Portfolio
+              </h4>
+              <button onclick="resetPaperAccount()" class="text-[11px] text-slate-400 hover:text-white underline">Reset</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+              <div class="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                <div class="text-[10px] text-slate-400">Balance</div>
+                <div id="portfolioBalance" class="font-bold font-mono text-white text-sm">₹1,00,000</div>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                <div class="text-[10px] text-slate-400">Net Realized PnL</div>
+                <div id="portfolioRealizedPnl" class="font-bold font-mono text-emerald-400 text-sm">₹0.00</div>
+              </div>
+            </div>
+
+            <!-- Open Positions List -->
+            <div class="text-[11px] font-semibold text-slate-400 mb-1 flex items-center justify-between">
+              <span>Active Positions</span>
+              <span id="openPositionsCount" class="text-slate-500">0</span>
+            </div>
+            <div id="openPositionsList" class="space-y-1.5 max-h-48 overflow-y-auto">
+              <div class="text-center py-4 text-xs text-slate-500">No open positions. Scanner is searching...</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= MOBILE BOTTOM NAVIGATION (iPhone Safari Native Feel) ================= -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-lg border-t border-slate-800 flex items-center justify-around py-2 px-1 z-40">
+    <button onclick="switchMobileTab('chart')" id="tab-chart" class="mobile-tab flex flex-col items-center gap-1 text-emerald-400">
+      <i data-lucide="candlestick-chart" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold">Chart</span>
+    </button>
+    <button onclick="switchMobileTab('scanner')" id="tab-scanner" class="mobile-tab flex flex-col items-center gap-1 text-slate-400">
+      <i data-lucide="scan-line" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold">Scanner</span>
+    </button>
+    <button onclick="switchMobileTab('rules')" id="tab-rules" class="mobile-tab flex flex-col items-center gap-1 text-slate-400">
+      <i data-lucide="check-square" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold">6-Rules</span>
+    </button>
+    <button onclick="switchMobileTab('trades')" id="tab-trades" class="mobile-tab flex flex-col items-center gap-1 text-slate-400">
+      <i data-lucide="briefcase" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold">Trades</span>
+    </button>
+    <button onclick="switchMobileTab('settings')" id="tab-settings" class="mobile-tab flex flex-col items-center gap-1 text-slate-400">
+      <i data-lucide="sliders" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold">Settings</span>
+    </button>
+  </nav>
+
+  <!-- ================= SETTINGS & BROKER MODAL ================= -->
+  <div id="settingsModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-5 h-5 text-emerald-400"></i>
+          Quant Pilot Configuration
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <!-- Trading Mode Selection -->
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Trading Mode</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="selectConfigMode('PAPER')" id="cfgModePaper" class="py-2 px-3 rounded-lg border font-semibold border-emerald-500 bg-emerald-500/10 text-emerald-400">
+              Paper Trading (Testing)
+            </button>
+            <button type="button" onclick="selectConfigMode('REAL')" id="cfgModeReal" class="py-2 px-3 rounded-lg border font-semibold border-slate-700 bg-slate-800 text-slate-400">
+              Real Money (Fyers API)
+            </button>
+          </div>
+        </div>
+
+        <!-- Fyers Credentials -->
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5">
+          <div class="font-bold text-slate-200 flex items-center justify-between">
+            <span>Fyers API v3 Integration</span>
+            <button type="button" onclick="openFyersLogin()" class="text-[11px] text-cyan-400 underline font-semibold">Login With Fyers</button>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">App ID / Client ID</label>
+            <input type="text" id="cfgFyersClientId" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono" placeholder="e.g. RHS6KHF9X3-100">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Secret Key</label>
+            <input type="password" id="cfgFyersSecretKey" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono" placeholder="e.g. YND01Z3E40">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Access Token</label>
+            <input type="text" id="cfgFyersToken" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono text-[10px]" placeholder="Paste generated access token or use Login button">
+          </div>
+        </div>
+
+        <!-- Stop Loss & Strategy Preferences -->
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5">
+          <div class="font-bold text-slate-200">Rule 6: Stop-Loss Method</div>
+          <select id="cfgSlMode" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white">
+            <option value="prev_2_candles">Previous 2 Candles Low/High (Strict Rule 6)</option>
+            <option value="swing_low_high">Swing Low / High (Lookback 5)</option>
+            <option value="auto_tighter">Auto Tighter Stop-Loss</option>
+          </select>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Risk-Reward Ratio</label>
+              <input type="number" step="0.5" id="cfgRR" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono" value="2.0">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Risk Per Trade (%)</label>
+              <input type="number" step="0.5" id="cfgRiskPct" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono" value="1.0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Telegram Webhook for iPhone Lock-screen Alerts -->
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5">
+          <div class="font-bold text-slate-200">Telegram Instant Alerts (iPhone Safari & Mobile)</div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Telegram Bot Token (Optional)</label>
+            <input type="text" id="cfgTelegramToken" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Telegram Chat ID</label>
+            <input type="text" id="cfgTelegramChatId" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono" placeholder="e.g. 987654321">
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+        <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition">Cancel</button>
+        <button onclick="saveSettingsForm()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Chimes & Alert Tone Synthesizer -->
+  <script src="/static/js/app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
