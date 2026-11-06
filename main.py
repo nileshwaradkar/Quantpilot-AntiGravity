@@ -7,7 +7,7 @@ import sys
 import uvicorn
 
 def main():
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 7860))
     host = os.environ.get("HOST", "0.0.0.0")
     print("=" * 60)
     print("🚀 QUANT PILOT - Intraday Trading Assistant")
