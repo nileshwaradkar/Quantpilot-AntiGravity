@@ -156,7 +156,10 @@ async def background_scanner_loop():
 # -------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse(
+        request=request,
+        name="ïndex.html",
+        context={
         "request": request,
         "watchlist": DEFAULT_WATCHLIST,
         "default_symbol": active_symbol,
