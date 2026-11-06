@@ -275,3 +275,5 @@ Quant Pilot Antigravity/
 
 ## ⚖️ Disclaimer
 *This application is for educational and algorithmic trading assistance purposes. Quant trading involves financial risk. Always thoroughly test your strategy using the built-in Paper Trading simulator before allocating real capital.*
+#   Q u a n t - P i l o t - A n t i g r a v i t y  
+ 
