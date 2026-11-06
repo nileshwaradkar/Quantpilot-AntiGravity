@@ -1,0 +1,1 @@
+{"level":"ERROR","location":"[get_call:146] fyersModel","message":{"API":"/marketStatus","Error":{"message":"Please provide valid token","code":-15,"s":"error"}},"timestamp":"2025-11-01 23:23:48,594+0530","service":"FyersAPI"}

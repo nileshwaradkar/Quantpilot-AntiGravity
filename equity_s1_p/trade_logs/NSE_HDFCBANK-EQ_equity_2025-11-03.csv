@@ -1,0 +1,3 @@
+
+Timestamp,Symbol,Action,Position_Type,Entry_Price,Quantity,Capital_Used,Exit_Price,PnL,Status
+2025-11-03 13:50:00,NSE:HDFCBANK-EQ,Entry(Sell),Equity,,1,990.1,990.1,,Active
