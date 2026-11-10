@@ -5,16 +5,8 @@ Starts Uvicorn ASGI server hosting the Quant Pilot Web Application
 import os
 import sys
 import uvicorn
-from web_server import app
+from app.web_server import app
 
-# Satisfy Hugging Face ZeroGPU
-try:
-    import spaces
-    @spaces.GPU
-    def _zero_gpu_stub():
-        return None
-except ImportError:
-    pass
 
 def main():
     port = int(os.environ.get("PORT", 7860))
