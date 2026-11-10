@@ -5,6 +5,7 @@ Starts Uvicorn ASGI server hosting the Quant Pilot Web Application
 import os
 import sys
 import uvicorn
+from web_server import app
 
 # Satisfy Hugging Face ZeroGPU
 try:
@@ -24,7 +25,7 @@ def main():
     print(f"📡 Local Windows Browser: http://localhost:{port}")
     print(f"📱 iPhone Safari: Access via deployed Cloud URL or LAN IP")
     print("=" * 60)
-    uvicorn.run("web_server:app", host=host, port=port, reload=False)
+    uvicorn.run("web_server:app", host=host, port=port)
 
 if __name__ == "__main__":
     main()
