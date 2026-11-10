@@ -21,11 +21,11 @@ from .config import (
     BASE_DIR, DEFAULT_WATCHLIST, AppConfig,
     load_app_config, save_app_config
 )
-from .strategy_engine import evaluate_intraday_strategy
-from .market_data import MarketDataProvider
-from .paper_engine import PaperEngine
-from .broker_fyers import FyersBroker
-from .notifier import NotificationDispatcher
+from strategy_engine import evaluate_intraday_strategy
+from market_data import MarketDataProvider
+from paper_engine import PaperEngine
+from broker_fyers import FyersBroker
+from notifier import NotificationDispatcher
 
 app = FastAPI(title="Quant Pilot - Intraday Trading Assistant")
 
