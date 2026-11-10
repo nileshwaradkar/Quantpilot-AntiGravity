@@ -25,7 +25,7 @@ def main():
     print(f"📡 Local Windows Browser: http://localhost:{port}")
     print(f"📱 iPhone Safari: Access via deployed Cloud URL or LAN IP")
     print("=" * 60)
-    uvicorn.run("web_server:app", host=host, port=port)
+    uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
     main()
