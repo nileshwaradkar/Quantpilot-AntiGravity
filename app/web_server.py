@@ -30,10 +30,10 @@ from .notifier import NotificationDispatcher
 app = FastAPI(title="Quant Pilot - Intraday Trading Assistant")
 
 # Mount static and templates
+CURRENT_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
-STATIC_DIR.mkdir(exist_ok=True)
-TEMPLATES_DIR.mkdir(exist_ok=True)
+
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
